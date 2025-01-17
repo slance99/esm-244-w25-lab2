@@ -1,14 +1,14 @@
 ---
-title: "lab-2-key"
+title: "Lab 2 Workthrough"
+author: "Nathan Grimes + Sam Lance"
 format: 
   html:
     code-folding: show
     embed-resources: true
 execute:
-  warning: false
-  message: false
+  warning: false #hides any warnings when rendering 
+  message: false #hides any messages when rendering 
 ---
-
 
 ```{r}
 # load libraries
@@ -19,25 +19,23 @@ library(palmerpenguins)
 What does the following code chunk do? Why do we want to do these steps?
 
 ```{r}
-
 penguins_clean<-penguins |> 
-  drop_na() |> 
-  rename(mass=body_mass_g,
+  drop_na() |> #gets rid of nas 
+  rename(mass=body_mass_g, #renames columns to be shorter 
          bill_l=bill_length_mm,
          bill_d=bill_depth_mm,
          flip_l=flipper_length_mm)
 ```
 
-
 ## Part 1: Set up models
 
-We are tasked with providing a penguin growth model to support conservation efforts in Antartica. The lead researcher needs an accurate, but parsimonious model to predict penguin body mass based on observed characteristics. They asked us to analyze 3 models:
+We are tasked with providing a penguin growth model to support conservation efforts in Antartica. The lead researcher needs an accurate, but parsimonious model to predict [penguin body mass]{.underline} based on observed characteristics. They asked us to analyze 3 models:
 
-- Model 1: Bill length, bill depth, flipper length, species, sex, and island
+-   Model 1: Bill length, bill depth, flipper length, species, sex, and island
 
-- Model 2: Bill length, bill depth, flipper length, species, and sex
+-   Model 2: Bill length, bill depth, flipper length, species, and sex
 
-- Model 3: Bill depth, flipper length, species, and sex
+-   Model 3: Bill depth, flipper length, species, and sex
 
 Run a linear model for each model specification. Summarize your findings. Use the `penguins_clean` dataframe.
 
@@ -49,18 +47,37 @@ R is able to recognize formulas if saved to the global environment. Take advanta
 #| eval: false
 
 #variable name
-f1   <-  dep_var~col_name_1+col_name_2+col_name_3
+f1   <-  dep_var~col_name_1+col_name_2+col_name_3 #dependent variable and independent variables
 
-mdl<-lm(f1, data=df_where_column_names_come_frome)
+mdl<-lm(f1, data=df_where_column_names_come_frome) #creating the linear model 
 ```
 
+-   Model 1: Bill length, bill depth, flipper length, species, sex, and island
 
+-   Model 2: Bill length, bill depth, flipper length, species, and sex
+
+-   Model 3: Bill depth, flipper length, species, and sex
 
 ```{r}
-# Use this chunk and any extras to complete setting up the model
+
+#set up formulas for each model above 
+f1 <- mass~ bill_l+bill_d+flip_l+species+sex+island
+f2 <- mass~ bill_l+bill_d+flip_l+species+sex
+f3 <- mass~ bill_d+flip_l+species+sex
+
+#create linear models for each one above
+mdl_1<-lm(f1, data=penguins_clean)
+mdl_2<-lm(f2, data=penguins_clean)
+mdl_3<-lm(f3, data=penguins_clean)
+
+#printing each model
+summary(mdl_1)
+summary(mdl_2)
+summary(mdl_3)
+
+#summarizing results
+#r squared - explains 87% of the data, pick the one with the highest value AKA model 2
 ```
-
-
 
 ### AIC
 
@@ -69,9 +86,13 @@ Use AIC to justify your model selection. What edits do you need to make in order
 ```{r}
 #| eval: false
 
-AIC(x,y,z)
-```
+AIC(mdl_1,mdl_2,mdl_3)
 
+#AIC Values
+#Purpose: picking the best of a series of models
+#Goal: pick the model with the lowest value of AIC 
+#Selection: for this model select model 2 
+```
 
 ## Comparing models with Cross Validation
 
@@ -79,13 +100,29 @@ Now we're going to use 10-fold cross validation to help us select the models. Wr
 
 Pseudocode:
 
+-   Pick how much training data we want to use  - 10 folds
 
+-   Random sampling
 
+-   What metric do we use?
 
+    -   Root mean squared error
 
+    -   Make a function for RMSE
 
+-   For loop
 
-### Accuracy criteria
+    -   apply the model to each training set
+
+    -   Make prediction on the test set with fitted training model
+
+-   Close loop
+
+-   Summarize our RMSE (which model was on average the best)
+
+-   Final model built on the whole dataset
+
+### Accuracy Criteria
 
 What metric is going to help us identify which model performed better?
 
@@ -96,28 +133,31 @@ We'll use root mean square error to start as it is the most widely used.
 What is the difference between these two functions? Create two example vectors `x` and `y` to test each. Make sure to run the functions before trying them out. Which do you prefer using?
 
 ```{r}
-calc_rmse<-function(x,y){
-  rmse <- (x-y)^2 |> 
+calc_rmse<-function(x,y){ #creating a function and its inputs
+  rmse <- (x-y)^2 |> #definingn the function enviornment aka the steps that need to be done
     mean() |> 
     sqrt()
-  return(rmse)
+  return(rmse) #return the rmse when asked for it 
 }
+
+calc_rmse(x = c(5, 8, 9, 22, 31, 18, 99, 20, 10, 11), 
+          y = c(7, 9, 33, 91, 88, 14, 67, 55, 30, 54))
 
 calc_rmse_2<-function(x,y){
   rmse<- sqrt(mean((x-y)^2))
   
   return(rmse)
 }
+
+calc_rmse_2(x = c(5, 8, 9, 22, 31, 18, 99, 20, 10, 11), 
+          y = c(7, 9, 33, 91, 88, 14, 67, 55, 30, 54))
+
+#Result: functions get the exact same thing, just different formats 
 ```
-
-
-
-
-
 
 ### Testing and Training split
 
-We need to randomly assign every data point to a fold. We're going to want 10 folds. 
+We need to randomly assign every data point to a fold. We're going to want 10 folds.
 
 **New Function!**
 
@@ -130,11 +170,11 @@ sample(ex,size=1)
 # we can create a random sample of any size with the size term.
 
 # Why doesn't the first line work while the second does?
-sample(ex,size=10)
+#sample(ex,size=10)
 sample(ex,size=10,replace=TRUE)
 
 #Describe in words the replace argument.
-
+#Without replacement, you will run out of balls (god forbid)
 
 ```
 
@@ -142,42 +182,50 @@ Why is everybody getting different answers in the example sample? Is this a prob
 
 ```{r}
 #seed
+#since the samples between people have different results each time could create different models between different people and create different results between different runs 
 
-
+#seed
+set.seed(42) #any time you make a random number use the same pathway, 42 the answer to all
+sample(ex, size = 10, replace = TRUE)
 ```
-
 
 Now let's use sample in tidyverse structure to group the data into different folds.
 
 ```{r}
-folds<-10
+#set number of folds 
+folds<-10 #want ten folds so set it 
 
-fold_vec<-rep(1:folds,length.out=nrow(penguins_clean))
+#create an assigned number group for each observation of penguin
+fold_vec<-rep(1:folds,length.out=nrow(penguins_clean)) #create a repeating list of 1-10 with the same amount of datapoints as the penguins dataset , gives each observation of penguin a marker AKA group BUT doesn't mix it up
 
+#add column to store those groups and assign
 penguins_fold<-penguins_clean |> #what goes here?
+  mutate(group = sample(fold_vec, size = n(), replace = FALSE)) #pull out numbers from fold_vec at random, do it size of times you see observations of penguins 
   
 
 #check to make sure the fold groups are balanced
-
-table(penguins_fold$group)
+table(penguins_fold$group) #tells us how many observations there are for each group, should be roughly equal 
 ```
 
 Create dataframes called `test_df` and `train_df` that split the penguins data into a train or test sample
 
 ```{r}
-# datasets here
-```
+test_df <- penguins_fold |> #pick one of your dataframes to be your testing, only select 1
+  filter(group == 1)
 
+train_df <- penguins_fold |> #pick the rest of your dataframes to be your training
+  filter(group != 1)
+```
 
 Now fit each model to the training set using the `lm()`. Name each model `training_lmX` where X is the number of the formula.
 
 ```{r}
-
-
+#create linear models for each one above, using the same models but with diff data 
+training_lm1<-lm(f1, data=train_df)
+training_lm2<-lm(f2, data=train_df)
+training_lm3<-lm(f3, data=train_df)
 
 ```
-
-
 
 **New Function!**
 
@@ -185,16 +233,20 @@ Now fit each model to the training set using the `lm()`. Name each model `traini
 
 ```{r}
 predict_test<-test_df |> 
-  mutate(model1 = predict(xxx,test_df),
-         model2 = predict(xxx,test_df),
-         model3 = predict(xxx,test_df))
+  mutate(model1 = predict(training_lm1,test_df),  
+         model2 = predict(training_lm2,test_df),
+         model3 = predict(training_lm3,test_df))
+
+#Result: gives us the predicted body masses from each one based on the data from training 
 ```
 
 Calculate the RMSE of the first fold test predictions. Hint: Use summarize to condense the `predict_test` dataframe.
 
 ```{r}
 rmse_predict_test<-predict_test |> 
-  summarize(????)
+  summarize(rmse_model1= calc_rmse(mass, model1),
+            rmse_model2= calc_rmse(mass, model2),
+            rmse_model3= calc_rmse(mass, model3))
 ```
 
 What are the results just looking at the first fold?
@@ -227,7 +279,6 @@ for( i in 1:folds){
 mean(rmse_vec)
 ```
 
-
 Great we made a for loop for one model. Now we would have to do it again and again for the other formulas. To reduce copy/pasting let's make the innerpart of the for loop into a function. I gave you the starting pieces below. Complete the rest of the function
 
 ```{r}
@@ -237,10 +288,6 @@ kfold_cv<-function(i,df,formula){
   
 }
 ```
-
-
-
-
 
 ### 10-fold CV: Purrr
 
@@ -255,14 +302,10 @@ rmse_means<-rmse_df |>
   summarize(across(starts_with('rmse'),mean))
 ```
 
-
 ## Final Model Selection
 
 Between AIC and the RMSE scores of the Cross Validation, which model does the best job of predicting penguin bodymass?
 
-
 The final step is to run the selected model on all the data. Fit a final model and provide the summary table.
 
-
 Render your document, commit changes, and push to github.
-
