@@ -247,11 +247,29 @@ rmse_predict_test<-predict_test |>
   summarize(rmse_model1= calc_rmse(mass, model1),
             rmse_model2= calc_rmse(mass, model2),
             rmse_model3= calc_rmse(mass, model3))
+
+#conclusion = pick model 1 BUT will do this ten times 
 ```
 
 What are the results just looking at the first fold?
 
 ### 10-fold CV: For Loop
+
+For Loop Review
+
+```{r}
+names <- c("Nate", "Thuy-Tien", "kyle", "Sam")
+
+for(i in names){
+  print(i)
+}
+
+vec <- seq(1,10)
+
+for(k in vec){
+  print(k)
+}
+```
 
 Our general structure works with one fold. Now we need to evaluate across all 10 folds for each model. Let's use a for loop to iterate over the folds for just one model first.
 
@@ -260,19 +278,27 @@ Our general structure works with one fold. Now we need to evaluate across all 10
 ### initialize a blank vector
 rmse_vec<-vector(length=folds)  #Why?
 
-for( i in 1:folds){
-
-  # separate into test and train
+for( i in 1:folds){ #create vector from 1-folds which is equal to 10, vector 1-10
   
+  kfold_test_df <- penguins_fold |>
+    filter(group == i) #filter by group = i because will run through each one 
+  
+  kfold_train_df <- penguins_fold |>
+    filter(group != i) #dont want what is equal to i
   
   # Run for one model
-  
+  f1 <- mass~ bill_l+bill_d+flip_l+species+sex+island #create the model we had originally
+  kfold_training_lm1<-lm(f1, data=kfold_train_df) #run the linear model with our kfold df
+
   #Get the predictions from the model
+  kfold_predict_test<-kfold_test_df |> 
+    mutate(model1 = predict(kfold_training_lm1,kfold_test_df)) #put our test df into our lm
   
   # Summarize/calculate the rmse for that model
+  kfold_rmse_predict_test<-kfold_predict_test |> 
+    summarize(rmse_model1= calc_rmse(mass, model1)) #plug our mass and model 1 mass into our RMSE and see the values it spits out 
   
-  
-  rmse_vec[i]<-kfold_rmse$rmse_md1
+  rmse_vec[i]<-kfold_rmse_predict_test$rmse_model1 #go into this index and pick the value of the index 
 }
 
 # Average value for the first model
@@ -282,8 +308,27 @@ mean(rmse_vec)
 Great we made a for loop for one model. Now we would have to do it again and again for the other formulas. To reduce copy/pasting let's make the innerpart of the for loop into a function. I gave you the starting pieces below. Complete the rest of the function
 
 ```{r}
+#GOAL: take the same code above but make it more flexible with inputs 
 kfold_cv<-function(i,df,formula){
   
+  #split into training and testing
+  kfold_train_df <- df |>
+    filter(group != i)
+  kfold_test_df <- df |>
+    filter(group == i)
+  
+  #run the linear model
+  kfold_lm <- lm(formula, data = kfold_train_df)
+  
+  #get the prediction
+  kfold_pred_df <- kfold_test_df |>
+    mutate(md=predict(kfold_lm, kfold_test_df))
+  
+  #calculate rmse
+  kfold_rmse <- kfold_pred_df |>
+    summarize(rmse_md = calc_rmse(md, mass))
+  
+  return(kfold_rmse$rmse_md)
   
   
 }
@@ -294,17 +339,24 @@ kfold_cv<-function(i,df,formula){
 Since we already defined the function that does CV for each model. We can use purrr to easily get all the results and store it in a dataframe.
 
 ```{r}
-rmse_df<-data.frame(j=1:folds) |> mutate(rmse_mdl1 = map_dbl(j, kfold_cv, df=penguins_fold,formula=f1),
-                                         rmse_mdl2=map_dbl(j,kfold_cv,df=penguins_fold,formula=f2),
-                                         rmse_mdl3=map_dbl(j,kfold_cv,df=penguins_fold,formula=f3))
+#purpose: takes the formula above, iterate above all point in folds, pass through kfold_cv formula, and sets the df and the formula you want for each one, and puts the results into a nice column 
+rmse_df<-data.frame(j=1:folds) |> 
+  mutate(rmse_mdl1 = map_dbl(j, kfold_cv, df=penguins_fold,formula=f1),
+         rmse_mdl2=map_dbl(j,kfold_cv,df=penguins_fold,formula=f2),
+         rmse_mdl3=map_dbl(j,kfold_cv,df=penguins_fold,formula=f3))
 
+#summarize over all the models, take the mean of each column 
 rmse_means<-rmse_df |> 
   summarize(across(starts_with('rmse'),mean))
+
+#result: number 2 was the best just like the AIC, the best model 
 ```
 
 ## Final Model Selection
 
 Between AIC and the RMSE scores of the Cross Validation, which model does the best job of predicting penguin bodymass?
+
+The second model is the best for predicting penguin bodymass!
 
 The final step is to run the selected model on all the data. Fit a final model and provide the summary table.
 
